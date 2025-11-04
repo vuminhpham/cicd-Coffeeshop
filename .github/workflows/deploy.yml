@@ -1,82 +1,32 @@
-name: Build & Deploy Coffeeshop BE
+name: CI/CD React App with Docker
 
 on:
   push:
-    branches: ["main"]
-
-concurrency:
-  group: deploy-coffeeshop-be
-  cancel-in-progress: true
+    branches: ["main"] # Chạy workflow khi có push lên nhánh main
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      IMAGE_NAME: ${{ secrets.DH_USER }}/coffeeshop-backend
-      IMAGE_TAG: latest
+
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      # Bước 1: Lấy source code
+      - name: 📥 Checkout source code
+        uses: actions/checkout@v3
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login Docker Hub
-        uses: docker/login-action@v3
+      # Bước 2: Login DockerHub
+      - name: 🔐 Login to DockerHub
+        uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DH_USER }}
-          password: ${{ secrets.DH_TOKEN }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build & Push image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./Backend
-          file: ./Backend/Dockerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          provenance: false
-          sbom: false
+      # Bước 3: Build Docker image
+      - name: 🛠️ Build Docker image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKER_USERNAME }}/react-app:latest \
+            .
 
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to VPS (sync repo & restart all services)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -euxo pipefail
-
-            # Bảo đảm thư mục tồn tại, nếu chưa có thì clone
-            if [ ! -d "$HOME/coffeeshop/.git" ]; then
-              mkdir -p "$HOME"
-              cd "$HOME"
-              # Repo phải dùng URL SSH: git@github.com:<user>/<repo>.git
-              git clone git@github.com:LongIT2007/coffeeshop.git
-              cd coffeeshop
-            else
-              cd "$HOME/coffeeshop"
-            fi
-
-            git fetch --all
-            git reset --hard origin/main
-            git clean -fd -e .env
-
-            if [ -n "${{ secrets.DH_USER }}" ] && [ -n "${{ secrets.DH_TOKEN }}" ]; then
-              echo "${{ secrets.DH_TOKEN }}" | docker login -u "${{ secrets.DH_USER }}" --password-stdin || true
-            fi
-
-            docker compose down
-            docker compose up -d --pull always
-
-            docker image prune -f
-
-            docker compose ps
+      # Bước 4: Push Docker image lên DockerHub
+      - name: 📤 Push Docker image
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/react-app:latest

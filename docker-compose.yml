@@ -6,7 +6,7 @@ services:
     container_name: coffeeshop-backend
     restart: unless-stopped
     ports:
-      - "8099:8089"  # host:container
+      - "8099:8099"  # host:container
     env_file:
       - .env
     environment:
@@ -15,7 +15,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
       SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
-      SERVER_PORT: "8089"
+      SERVER_PORT: "8099"
       JAVA_TOOL_OPTIONS: "-Xms128m -Xmx512m -XX:+UseSerialGC"
 
   frontend:

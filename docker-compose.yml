@@ -1,9 +1,34 @@
 
-
 services:
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    restart: always
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_DATABASE: coffeeshop
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
+    command: >
+      --innodb-buffer-pool-size=64M
+      --max_connections=50
+      --performance_schema=OFF
   backend:
     image: ${DH_USER}/coffeeshop-backend:latest
     container_name: coffeeshop-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
     restart: unless-stopped
     ports:
       - "8099:8099"  # host:container
@@ -17,7 +42,6 @@ services:
       SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
       SERVER_PORT: "8099"
       JAVA_TOOL_OPTIONS: "-Xms128m -Xmx512m -XX:+UseSerialGC"
-
   frontend:
     image: ${DH_USER}/coffeeshop-frontend:latest
     container_name: coffeeshop-frontend
@@ -27,5 +51,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # React sẽ gọi API qua container backend
+      # Nếu React gọi API qua backend
       REACT_APP_API_URL: http://localhost:8099
+
+volumes:
+  mysql-data:

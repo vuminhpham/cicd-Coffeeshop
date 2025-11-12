@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Lấy API URL từ biến môi trường Vite
-export const BASE_API = import.meta.env.VITE_API_URL || 'http://localhost:80100';
+export const BASE_API = import.meta.env.VITE_API_URL || 'http://localhost:8099/api';
 
 const axiosClient = axios.create({
   baseURL: BASE_API,

@@ -45,39 +45,18 @@ public class SecurityConfig {
         http
                 .cors(c -> c.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // Public routes
                         .requestMatchers("/", "/ping", "/error", "/actuator/**").permitAll()
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
-
-                        // Public GET (menus, products, tables)
-                        .requestMatchers(HttpMethod.GET, "/api/menus/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/tables/available").permitAll()
-
-                        // ADMIN operations (write)
-                        .requestMatchers(HttpMethod.POST, "/api/menus/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/menus/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/menus/**").hasRole("ADMIN")
-
-                        .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
-
-                        // Authenticated routes
-                        .requestMatchers("/api/auth/me").hasAnyRole("ADMIN","CUSTOMER")
-                        .requestMatchers("/api/orders","/api/orders/**",
-                                "/api/reservations","/api/reservations/**")
-                        .hasAnyRole("CUSTOMER","ADMIN")
-
+                        .requestMatchers(HttpMethod.GET, "/api/menus/**", "/api/products/**", "/api/tables/available").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/menus/**", "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/menus/**", "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/menus/**", "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers("/api/auth/me", "/api/orders/**", "/api/reservations/**").hasAnyRole("ADMIN","CUSTOMER")
                         .anyRequest().authenticated()
                 )
-
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

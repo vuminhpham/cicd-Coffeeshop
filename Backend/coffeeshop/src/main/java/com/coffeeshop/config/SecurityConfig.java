@@ -43,30 +43,42 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(c -> c.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
+                .cors(c -> c.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
 
-            // Stateless session cho JWT
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                .requestMatchers("/", "/ping", "/error", "/actuator/**").permitAll()
-                .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
-                .requestMatchers("/api/menus", "/api/products", "/api/products/**", "/api/tables/available").permitAll()
+                        // Public routes
+                        .requestMatchers("/", "/ping", "/error", "/actuator/**").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
 
-                .requestMatchers("/api/auth/me").hasAnyRole("ADMIN","CUSTOMER")
-                .requestMatchers("/api/orders","/api/orders/**","/api/reservations","/api/reservations/**")
-                    .hasAnyRole("CUSTOMER","ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAnyRole("CUSTOMER","ADMIN")
-                .requestMatchers("/api/menus/**", "/api/products/**").hasRole("ADMIN")
+                        // Public GET (menus, products, tables)
+                        .requestMatchers(HttpMethod.GET, "/api/menus/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tables/available").permitAll()
 
-                .anyRequest().authenticated()
-            )
+                        // ADMIN operations (write)
+                        .requestMatchers(HttpMethod.POST, "/api/menus/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/menus/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/menus/**").hasRole("ADMIN")
 
-            // JWT filter
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+
+                        // Authenticated routes
+                        .requestMatchers("/api/auth/me").hasAnyRole("ADMIN","CUSTOMER")
+                        .requestMatchers("/api/orders","/api/orders/**",
+                                "/api/reservations","/api/reservations/**")
+                        .hasAnyRole("CUSTOMER","ADMIN")
+
+                        .anyRequest().authenticated()
+                )
+
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -80,18 +92,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         List<String> origins = Arrays.stream(allowedOriginsProp.split(","))
-                                     .map(String::trim)
-                                     .filter(s -> !s.isEmpty())
-                                     .toList();
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
 
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOrigins(origins);
-
         cfg.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
         cfg.setAllowedHeaders(Arrays.asList("Authorization","Content-Type","Origin","Accept"));
         cfg.setExposedHeaders(Arrays.asList("Authorization","Content-Type"));
         cfg.setAllowCredentials(true);
-        cfg.setMaxAge(3600L); // cache preflight 1h
+        cfg.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
@@ -101,7 +112,7 @@ public class SecurityConfig {
     @Bean
     public HttpFirewall httpFirewall() {
         StrictHttpFirewall fw = new StrictHttpFirewall();
-        fw.setAllowSemicolon(true); // fix "potentially malicious String ';'"
+        fw.setAllowSemicolon(true);
         return fw;
     }
 
